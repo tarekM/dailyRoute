@@ -1,0 +1,133 @@
+package com.example.dailyroute;
+
+import java.io.ByteArrayOutputStream;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.NameValuePair;
+import org.apache.http.StatusLine;
+import org.apache.http.client.ClientProtocolException;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.DefaultHttpClient;
+import org.apache.http.message.BasicNameValuePair;
+
+import android.app.Activity;
+import android.os.AsyncTask;
+import android.os.Bundle;
+import android.view.Menu;
+import android.widget.TextView;
+import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.EditText;
+import android.widget.TimePicker;
+
+public class MainActivity extends Activity {
+	private EditText eventName = null;
+	private String time_start = null;
+	private String time_end = null;
+	private EditText location = null;
+	private TimePicker tp = null;
+	private TimePicker tpTwo = null;
+	
+	class ServerRequestTask extends AsyncTask<String, Void, String> {
+	    protected String doInBackground(String... strings) {
+	    	String responseString = "";
+	    	try {
+				HttpClient httpclient = new DefaultHttpClient();
+				HttpPost httpPost = new HttpPost("http://leolei.herokuapp.com/users/" + strings[2]);
+				
+				List<NameValuePair> nvps = new ArrayList<NameValuePair>();
+		        nvps.add(new BasicNameValuePair("content-type", "application/json"));
+		
+		        StringEntity input = new StringEntity("{\"title\": \"" + strings[0] + "\",\"start_time\": \"" + strings[1] + "\", \"end_time\": \"" + strings[2] + "\"}");
+		        input.setContentType("application/json");
+		        httpPost.setEntity(input);
+		
+		        for (NameValuePair h : nvps)
+		        {
+		            httpPost.addHeader(h.getName(), h.getValue());
+		        }
+				
+			    HttpResponse response = httpclient.execute(httpPost);
+			    StatusLine statusLine = response.getStatusLine();
+			    if(statusLine.getStatusCode() == HttpStatus.SC_OK){
+			        ByteArrayOutputStream out = new ByteArrayOutputStream();
+			        response.getEntity().writeTo(out);
+			        out.close();
+			        responseString = out.toString();
+			    } else{
+			        //Closes the connection.
+			    	responseString = "Response NOT OK";
+			        response.getEntity().getContent().close();
+			        throw new IOException(statusLine.getReasonPhrase());
+			    }
+			} catch (ClientProtocolException e) {
+		        // TODO Auto-generated catch block
+				responseString = e.getMessage();
+		    } catch (IOException e) {
+		        // TODO Auto-generated catch block
+		    	responseString = e.getMessage();
+		    } finally {
+		    	//System.out.println(responseString);
+		    	return responseString;
+		    }
+	    }
+
+	    protected void onPostExecute(String responseString) {
+	    	((android.widget.TextView) findViewById(R.id.textView3)).setText(responseString);
+	    }
+	}
+	
+	private class GenericOnClickListener implements OnClickListener {
+		@Override
+        public void onClick(View v) {
+			String name = eventName.getText().toString();
+			String loc = location.getText().toString();
+			
+			switch(v.getId()){
+				case R.id.button2:
+					new ServerRequestTask().execute(name, time_start, time_end, "add");
+					break;
+				case R.id.button1:
+					EditText et = (EditText) findViewById(R.id.editText1);
+					et.setText("");
+					EditText et2 = (EditText) findViewById(R.id.editText2);
+					et2.setText("");
+					break;
+			}
+		}
+	}
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_main);
+		
+		eventName = (EditText) findViewById(R.id.editText1);
+		location = (EditText) findViewById(R.id.editText2);
+		tp =  (TimePicker) findViewById(R.id.timePicker1);
+		time_start = ""+tp.getCurrentHour() * 100 + tp.getCurrentMinute();
+		tpTwo = (TimePicker) findViewById(R.id.timePicker2);
+		time_end = ""+tpTwo.getCurrentHour() * 100 + tpTwo.getCurrentMinute();
+		
+		
+		
+		findViewById(R.id.button1).setOnClickListener(new GenericOnClickListener());
+		findViewById(R.id.button2).setOnClickListener(new GenericOnClickListener());
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		// Inflate the menu; this adds items to the action bar if it is present.
+		getMenuInflater().inflate(R.menu.main, menu);
+		return true;
+	}
+	
+
+    
+}
